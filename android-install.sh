@@ -31,8 +31,9 @@ set -uo pipefail
 # to /system/bin
 
 LOCAL_DIR=$(dirname $0)
-BBNAME="busybox-android"
-LOCALBB="${LOCAL_DIR}/${BBNAME}"
+OUTPUT_DIR="${LOCAL_DIR}/static-cross-bins/output/arm-linux-musleabi/bin"
+BBNAME="busybox"
+LOCALBB="${OUTPUT_DIR}/${BBNAME}"
 SCRIPT='android-remote-install.sh'
 # /data is preferred over /sdcard because it will allow us to execute BB
 TMP="/data"
@@ -40,8 +41,12 @@ TMPBB="${TMP}/busybox"
 TGT="/system/bin"
 TGTBB="${TGT}/busybox"
 
-# TODO: fix heredoc indent
-function main() {
+# compile busybox if not present
+if [[ ! -f "$LOCALBB" ]]; then
+	bash -c "${LOCAL_DIR}/static-cross-bins/docker_build.sh TARGET=arm-linux-musleabi busybox"
+fi
+
+main() {
 	# try to remount /system r/w
 	adb remount
 	adb shell mount | grep "\bsystem\b" | grep "\brw\b"
@@ -60,6 +65,7 @@ function main() {
 
 	# we should be mounted r/w, push BB
 	adb push "$LOCALBB" "$TGTBB"
+
 	# if push fails, try to upload to /sdcard and copy from there
 	if [ $? -ne 0 ]; then
 		adb push "$LOCALBB" "$TMPBB"
@@ -76,12 +82,6 @@ function main() {
 		EOF
 	fi
 
-	# BB is now installed in /system/xbin/busybox
-
-	# now execute a string of commands over one adb connection using a
-	# so-called here document
-	# redirect chatter to /dev/null -- adb apparently puts stdin and stderr in
-	# stdin so to add error checking we'd need to scan all the text
 	# move the files over to an adb writable location
 	adb push "${LOCAL_DIR}/${SCRIPT}" /mnt/SDCARD/
 	adb shell <<-EOF

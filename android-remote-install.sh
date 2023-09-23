@@ -4,6 +4,7 @@
 TOOLBOX_PROGS=" reboot getprop setprop start stop "
 BB="/system/bin/busybox"
 
+# create symlinks to busybox binaries
 for c in $("$BB" --list); do
 	# ! There must be a better way to do this
 	IN_LIST=0
