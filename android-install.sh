@@ -1,4 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -e
+set -uo pipefail
 
 # ryan:
 # I modified the original script as below for use with my rooted Atrix phone.
@@ -27,76 +30,71 @@
 # why we first upload BB to a temporary, executable location before moving it
 # to /system/bin
 
-LOCAL_DIR=`dirname $0`
-BBNAME=busybox-android
-LOCALBB=${LOCAL_DIR}/${BBNAME}
+LOCAL_DIR=$(dirname $0)
+BBNAME="busybox-android"
+LOCALBB="${LOCAL_DIR}/${BBNAME}"
 SCRIPT='android-remote-install.sh'
 # /data is preferred over /sdcard because it will allow us to execute BB
-TMP='/data/'
-TMPBB=${TMP}busybox
-TGT='/system/xbin/'
-TGTBB=${TGT}busybox
+TMP="/data"
+TMPBB="${TMP}/busybox"
+TGT="/system/bin"
+TGTBB="${TGT}/busybox"
 
-function doMain()
-{
-    # try to remount /system r/w
-    adb remount
-    adb shell mount |grep "\bsystem\b" |grep "\brw\b"
-    # this is a remount form that works on "partially rooted devices"
-    if [ $? -ne 0 ]; then
-        adb push $LOCALBB $TMPBB
-	adb shell <<DONE
-su
-mount -oremount,rw /system
-$TMPBB mount -oremount,rw /system
-$TMPBB rm $TMPBB
-exit
-exit
+# TODO: fix heredoc indent
+function main() {
+	# try to remount /system r/w
+	adb remount
+	adb shell mount | grep "\bsystem\b" | grep "\brw\b"
+	# this is a remount form that works on "partially rooted devices"
+	if [ $? -ne 0 ]; then
+		adb push "$LOCALBB" "$TMPBB"
+		adb shell <<-EOF
+		su
+		mount -oremount,rw /system
+		"$TMPBB" mount -oremount,rw /system
+		"$TMPBB" rm "$TMPBB"
+		exit
+		exit
+		EOF
+	fi
 
-DONE
-    fi
+	# we should be mounted r/w, push BB
+	adb push "$LOCALBB" "$TGTBB"
+	# if push fails, try to upload to /sdcard and copy from there
+	if [ $? -ne 0 ]; then
+		adb push "$LOCALBB" "$TMPBB"
+		adb push "$LOCALBB" /mnt/SDCARD/
+		adb shell <<-EOF
+		su
+		cp "/mnt/SDCARD/${BBNAME}" "$TGTBB"
+		chmod 755 "$TGTBB"
+		rm "/mnt/SDCARD/${BBNAME}"
+		"$TMPBB" cp "$TMPBB" "$TGTBB"
+		"$TMPBB" rm "$TMPBB"
+		exit
+		exit
+		EOF
+	fi
 
-    # we should be mounted r/w, push BB
-    adb push $LOCALBB $TGTBB
-    # if push fails, try to upload to /sdcard and copy from there
-    if [ $? -ne 0 ]; then
-	    adb push $LOCALBB $TMPBB
-	    adb push $LOCALBB /sdcard/
-	    adb shell <<DONE
-su
-cp /sdcard/$BBNAME $TGTBB
-chmod 755 $TGTBB
-rm /sdcard/$BBNAME
-$TMPBB cp $TMPBB $TGTBB
-$TMPBB rm $TMPBB
-exit
-exit
+	# BB is now installed in /system/xbin/busybox
 
-DONE
-    fi
+	# now execute a string of commands over one adb connection using a
+	# so-called here document
+	# redirect chatter to /dev/null -- adb apparently puts stdin and stderr in
+	# stdin so to add error checking we'd need to scan all the text
+	# move the files over to an adb writable location
+	adb push "${LOCAL_DIR}/${SCRIPT}" /mnt/SDCARD/
+	adb shell <<-EOF
+	su
+	"$TGTBB" ash "/mnt/SDCARD/${SCRIPT}"
+	rm "/mnt/SDCARD/${SCRIPT}"
+	sync
+	exit
+	exit
+	EOF
 
-    # BB is now installed in /system/xbin/busybox
-
-    # now execute a string of commands over one adb connection using a
-    # so-called here document
-    # redirect chatter to /dev/null -- adb apparently puts stdin and stderr in
-    # stdin so to add error checking we'd need to scan all the text
-    # move the files over to an adb writable location
-    adb push $LOCAL_DIR/$SCRIPT /sdcard/
-
-    adb shell <<DONE
-su
-$TGTBB ash /sdcard/$SCRIPT
-rm /sdcard/$SCRIPT
-sync
-exit
-exit
-
-DONE
-
-    # needs to be done separately to avoid "device busy" error
-    adb shell mount -o remount,ro /system
+	# needs to be done separately to avoid "device busy" error
+	adb shell mount -o remount,ro /system
 }
 
-doMain
-
+main

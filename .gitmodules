@@ -1,0 +1,3 @@
+[submodule "static-cross-bins"]
+	path = static-cross-bins
+	url = https://github.com/pythoninthegrass/static-cross-bins.git
