@@ -9,6 +9,7 @@ Useful for Android devices that don't ship with standard GNU Utils (i.e., only i
 ## Setup
 * [adb](https://www.xda-developers.com/install-adb-windows-macos-linux/)
 * [docker](https://www.docker.com/products/docker-desktop/)
+* [task](https://taskfile.dev/installation/)
 
 ## Quickstart
 ```bash
