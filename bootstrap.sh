@@ -49,6 +49,7 @@ if [[ $# -ne 0 ]] || [[ "$1" = "-h" ]] || [[ "$1" = "--help" ]]; then
 	exit 0
 fi
 
+# TODO: QA install w/o go on *nix
 main() {
 	# install by os if not present
 	if [ "$installed" = 1 ]; then
@@ -56,13 +57,13 @@ main() {
 			brew install go-task
 		elif [ "$OS" = "Linux" ]; then
 			if [ "$ID" = "debian" ] || [ "$ID" = "ubuntu" ]; then
-				sudo apt install -y golang-go
+				# sudo apt install -y golang-go
 				sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b "${logged_in_home}/.local/bin"
 			elif [ "$ID" = "fedora" ] || [ "$ID" = "centos" ]; then
-				sudo dnf install -y golang-go
+				# sudo dnf install -y golang-go
 				sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b "${logged_in_home}/.local/bin"
 			elif [ "$ID" = "arch" ] || [ "$ID" = "manjaro" ]; then
-				sudo pacman -S --noconfirm go
+				# sudo pacman -S --noconfirm go
 				sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b "${logged_in_home}/.local/bin"
 			else
 				echo "Please install task manually. See: https://taskfile.dev/installation/"
