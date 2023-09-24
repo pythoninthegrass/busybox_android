@@ -3,33 +3,6 @@
 set -e
 set -uo pipefail
 
-# ryan:
-# I modified the original script as below for use with my rooted Atrix phone.
-# I'm using a retail build that still thinks it's a production device.
-# The best way to state this is that ro.secure=1 in default.prop, but su
-# executes under a shell on the device and yields root permissions
-#
-# Another oddity that I encountered is that mv can fail giving
-# errors citing cross-device linkage:
-#     It seems that this error is given because mv tries
-#     to move the hard link to the data, but fails because
-#     in this case, the src and dest filesystems aren't the same.
-#
-# Symptoms of this state are that the following adb commands fail (not an ordered list, but executing any atomically):
-#   adb remount
-#   adb ls /data/app/
-#   adb root
-# but executing this works fine:
-#   adb shell
-#   $ su
-#   $ ls /data/app/
-#
-# Gnurou:
-# Another issue is that some devices come with most basic commands like mount
-# removed, which requires us to use BB to remount /system read-write. This is
-# why we first upload BB to a temporary, executable location before moving it
-# to /system/bin
-
 LOCAL_DIR=$(dirname $0)
 OUTPUT_DIR="${LOCAL_DIR}/static-cross-bins/output/arm-linux-musleabi/bin"
 BBNAME="busybox"
@@ -43,7 +16,9 @@ TGTBB="${TGT}/busybox"
 
 # compile busybox if not present
 if [[ ! -f "$LOCALBB" ]]; then
-	bash -c "${LOCAL_DIR}/static-cross-bins/docker_build.sh TARGET=arm-linux-musleabi busybox"
+	(cd "${LOCAL_DIR}/static-cross-bins"; \
+	./docker_build.sh TARGET=arm-linux-musleabi busybox; \
+	cd -)
 fi
 
 main() {
